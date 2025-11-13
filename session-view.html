@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MySketchBooth 세션 뷰</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+      background: radial-gradient(circle at 20% 20%, #fdf3e6 0%, #f5e0cc 45%, #e8d0b9 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(16px, 4vw, 36px);
+    }
+
+    .container {
+      width: min(480px, 100%);
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 24px;
+      padding: clamp(18px, 3vw, 28px);
+      box-shadow: 0 20px 48px rgba(41, 24, 11, 0.25);
+      text-align: center;
+      position: relative;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      color: #5a3b1f;
+    }
+
+    #statusText {
+      margin-top: 6px;
+      font-size: 0.95rem;
+      color: rgba(80, 60, 40, 0.78);
+    }
+
+    #finalImage {
+      width: 100%;
+      height: auto;
+      border-radius: 18px;
+      margin: 18px 0;
+      border: 2px solid rgba(184, 99, 51, 0.25);
+      background: #090a18;
+    }
+
+    #emptyMessage {
+      color: rgba(92, 72, 50, 0.9);
+      margin: 30px 0;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      background: linear-gradient(135deg, #ef4f4f, #a81b1b);
+      transition: transform 160ms ease;
+    }
+
+    button:disabled {
+      background: rgba(160, 160, 160, 0.4);
+      cursor: not-allowed;
+    }
+
+    button:not(:disabled):hover {
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>인생네컷</h1>
+    <p id="statusText">세션을 불러오는 중...</p>
+    <img id="finalImage" alt="완성본 이미지" hidden>
+    <p id="emptyMessage" hidden>세션 정보를 불러오지 못했습니다.</p>
+    <div class="actions">
+      <button id="downloadBtn" type="button" disabled>이미지 저장</button>
+    </div>
+  </div>
+
+  <script src="firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    const downloadBtn = document.getElementById("downloadBtn");
+    const finalImage = document.getElementById("finalImage");
+    const statusText = document.getElementById("statusText");
+    const emptyMessage = document.getElementById("emptyMessage");
+
+    let firebaseApp = null;
+    let firestore = null;
+
+    async function initFirebase() {
+      if (!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey)) {
+        statusText.textContent = "Firebase 설정이 필요합니다.";
+        return;
+      }
+      try {
+        firebaseApp = firebase.initializeApp(window.FIREBASE_CONFIG);
+        firestore = firebase.firestore();
+        await firebase.auth().signInAnonymously();
+      } catch (err) {
+        console.error("Firebase 초기화 실패", err);
+        statusText.textContent = "Firebase 연결에 실패했습니다.";
+      }
+    }
+
+    function downloadDataUrl(dataUrl, filename) {
+      if (!dataUrl) return;
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    async function loadSession(sessionId) {
+      if (!sessionId) {
+        statusText.textContent = "세션 ID가 없습니다.";
+        emptyMessage.hidden = false;
+        return;
+      }
+      if (!firestore) {
+        statusText.textContent = "Firebase 연결을 확인하세요.";
+        emptyMessage.hidden = false;
+        return;
+      }
+      try {
+        const snap = await firestore.collection("sessions").doc(sessionId).get();
+        if (!snap.exists) {
+          statusText.textContent = "저장된 세션을 찾을 수 없습니다.";
+          emptyMessage.hidden = false;
+          return;
+        }
+        const data = snap.data();
+        const imageUrl = data?.imageDataUrl;
+        if (!imageUrl) {
+          statusText.textContent = "이미지 데이터가 없습니다.";
+          emptyMessage.hidden = false;
+          return;
+        }
+        finalImage.src = imageUrl;
+        finalImage.hidden = false;
+        statusText.textContent = "완성본을 확인하세요.";
+        downloadBtn.disabled = false;
+        downloadBtn.addEventListener("click", () => downloadDataUrl(imageUrl, "mysketchbooth-life4cut.jpg"));
+      } catch (err) {
+        console.error("세션 fetch 실패", err);
+        statusText.textContent = "세션을 불러오는 중 오류가 발생했습니다.";
+        emptyMessage.hidden = false;
+      }
+    }
+
+    (async () => {
+      await initFirebase();
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get("session");
+      await loadSession(sessionId);
+    })();
+  </script>
+</body>
+</html>

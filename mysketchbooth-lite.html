@@ -1,0 +1,1952 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MySketchBooth Lite 🎞️</title>
+  <meta name="share-base" content="">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: rgba(255, 252, 245, 0.88);
+      --accent: #b86333;
+      --accent-soft: rgba(184, 99, 51, 0.22);
+      --accent-dark: #6b3411;
+      --muted: #7b6652;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --shadow: 0 22px 45px rgba(85, 65, 40, 0.16);
+      --transition: 220ms ease;
+      --preview-width: clamp(640px, 80vw, 960px);
+      --control-width: clamp(720px, 90vw, 1080px);
+      --live-width: clamp(560px, 70vw, 840px);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    select,
+    input,
+    button,
+    label,
+    .status-bar,
+    .slot span,
+    .badge,
+    .badge.tag {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Noto Serif KR', 'Nanum Myeongjo', 'Pretendard', serif;
+      color: var(--accent-dark);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: clamp(16px, 4vh, 48px) clamp(16px, 5vw, 64px);
+      overflow: auto;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: none;
+      z-index: 0;
+    }
+
+    .layout {
+      width: 100%;
+      max-width: var(--control-width);
+      min-height: clamp(360px, 58vh, 480px);
+      display: grid;
+      grid-template-columns: minmax(0, var(--control-width));
+      gap: clamp(12px, 2.2vw, 20px);
+      padding: clamp(12px, 2.4vw, 20px);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.54);
+      align-items: stretch;
+      justify-items: stretch;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .stack {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vh, 16px);
+      border-radius: var(--radius-lg);
+      padding: clamp(12px, 2.2vw, 20px);
+      background: var(--surface);
+      border: 1px solid rgba(161, 126, 88, 0.22);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      justify-content: center;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .preview-stack {
+      display: none;
+      flex-direction: column;
+      padding: clamp(10px, 2vw, 16px);
+      justify-content: center;
+      gap: clamp(12px, 2.4vw, 20px);
+      width: 100%;
+    }
+
+    .preview-layout {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(14px, 2.6vw, 22px);
+    }
+
+    .edit-controls {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(14px, 2.6vw, 24px);
+      align-items: stretch;
+    }
+
+    .panel-intro {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: clamp(6px, 1.6vh, 12px);
+    }
+
+    .panel-intro h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 3.6vw, 2.4rem);
+      letter-spacing: -0.02em;
+      color: #171a35;
+      font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
+    }
+
+    .panel-intro p {
+      margin: 0;
+      max-width: 320px;
+      color: rgba(102, 78, 57, 0.82);
+      font-size: clamp(0.9rem, 1.7vw, 1.02rem);
+      line-height: 1.5;
+    }
+
+    .badge.tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(184, 99, 51, 0.16);
+      color: var(--accent-dark);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      font-size: 0.78rem;
+    }
+
+    .bg-stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-orb {
+      position: absolute;
+      width: clamp(280px, 36vw, 540px);
+      height: clamp(280px, 36vw, 540px);
+      opacity: 0.65;
+      mix-blend-mode: soft-light;
+      --base-transform: translate3d(0, 0, 0);
+      transform: var(--base-transform);
+      transform-origin: 50% 50%;
+    }
+
+    .bg-orb--one {
+      top: clamp(-120px, -8vh, -40px);
+      left: clamp(-120px, -8vw, -40px);
+      animation: orbDriftA 28s ease-in-out infinite;
+    }
+
+    .bg-orb--two {
+      bottom: clamp(-160px, -12vh, -60px);
+      right: clamp(-200px, -14vw, -80px);
+      animation: orbDriftB 34s ease-in-out infinite;
+      opacity: 0.55;
+    }
+
+    .bg-orb--three {
+      top: clamp(20vh, 24vh, 32vh);
+      left: 50%;
+      --base-transform: translateX(-50%);
+      width: clamp(240px, 32vw, 460px);
+      height: clamp(240px, 32vw, 460px);
+      animation: orbDriftC 24s ease-in-out infinite;
+      opacity: 0.5;
+    }
+
+    .preview-frame {
+      position: relative;
+      flex: 1 1 auto;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #finalCanvas {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: clamp(240px, 48vw, 360px);
+      height: auto;
+      border-radius: 0;
+      box-shadow: 0 18px 28px rgba(122, 93, 60, 0.22);
+    }
+
+    .frame-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      max-width: clamp(240px, 48vw, 360px);
+      height: auto;
+      pointer-events: none;
+      border-radius: 0;
+      z-index: 2;
+    }
+
+    .share-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(12, 8, 4, 0.55);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(16px, 4vw, 32px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition);
+      z-index: 99;
+    }
+
+    .share-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .share-card {
+      width: min(420px, 90vw);
+      background: rgba(255, 252, 245, 0.96);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(116, 84, 52, 0.25);
+      box-shadow: 0 18px 40px rgba(32, 18, 8, 0.28);
+      padding: clamp(18px, 3vw, 28px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(12px, 2vw, 18px);
+      position: relative;
+    }
+
+    .share-card h2 {
+      margin: 0;
+      font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+      color: var(--accent-dark);
+    }
+
+    .share-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      border: none;
+      background: transparent;
+      font-size: 1.25rem;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .qr-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .qr-container {
+      width: 180px;
+      height: 180px;
+      border-radius: var(--radius-sm);
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .qr-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .session-mobile-panel {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px dashed rgba(122, 93, 60, 0.4);
+      border-radius: var(--radius-md);
+      padding: clamp(10px, 2vw, 16px);
+    }
+
+    .session-mobile-panel figure {
+      margin: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .session-mobile-panel img {
+      width: 100%;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(122, 93, 60, 0.2);
+      background: #090a18;
+      object-fit: contain;
+    }
+    
+    .session-mobile-panel button {
+      width: 100%;
+      text-align: center;
+    }
+
+    .qr-container {
+      width: 180px;
+      height: 180px;
+      border-radius: var(--radius-sm);
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .share-link {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .share-link input {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(116, 84, 52, 0.3);
+      background: rgba(255, 255, 255, 0.8);
+      font-size: 0.95rem;
+      color: var(--accent-dark);
+    }
+
+    .share-link button {
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(116, 84, 52, 0.4);
+      background: rgba(184, 99, 51, 0.1);
+      color: var(--accent-dark);
+      cursor: pointer;
+    }
+
+    .share-downloads {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .share-downloads button {
+      flex: 1 1 48%;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(116, 84, 52, 0.35);
+      background: rgba(248, 236, 217, 0.9);
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--accent-dark);
+    }
+
+    .share-hint {
+      margin: 0;
+      font-size: 0.9rem;
+      color: rgba(60, 40, 26, 0.75);
+      text-align: center;
+    }
+
+    body.session-view .layout {
+      grid-template-columns: minmax(0, var(--preview-width));
+    }
+
+    body.session-view .control-stack,
+    body.session-view .capture-actions,
+    body.session-view .slot-grid,
+    body.session-view .status-bar,
+    body.session-view .control-row {
+      display: none;
+    }
+
+    body.session-view .live-box {
+      display: none;
+    }
+
+    body.session-view .preview-stack {
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.stage-review .layout {
+      grid-template-columns: minmax(0, var(--preview-width)) minmax(0, var(--control-width));
+      width: min(100%, calc(var(--preview-width) + var(--control-width) + clamp(12px, 2vw, 20px)));
+    }
+
+    body.stage-review .preview-stack {
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.stage-review .control-stack,
+    body.stage-review .capture-actions,
+    body.stage-review .slot-grid,
+    body.stage-review .status-bar,
+    body.stage-review .control-row {
+      display: none;
+    }
+
+    body.stage-review .live-box {
+      display: none;
+    }
+
+    .preview-frame,
+    .edit-controls {
+      flex: 1;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .frame-options {
+      display: grid;
+      gap: clamp(8px, 1.6vh, 14px);
+      width: min(100%, clamp(160px, 20vw, 220px));
+    }
+
+    .result-actions {
+      display: flex;
+      gap: clamp(10px, 2vw, 14px);
+      justify-content: center;
+    }
+
+    .edit-hint {
+      display: none;
+      font-size: clamp(0.82rem, 1.6vw, 0.95rem);
+      color: rgba(104, 77, 54, 0.78);
+      margin-top: clamp(6px, 1.6vh, 12px);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .frame-options select,
+    .frame-options input {
+      width: 100%;
+      padding: clamp(6px, 1.4vh, 10px) clamp(8px, 1.6vw, 12px);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(145, 103, 64, 0.32);
+      background: rgba(248, 236, 217, 0.92);
+      font-size: clamp(0.84rem, 1.6vw, 0.96rem);
+      color: var(--accent-dark);
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .frame-options select:focus,
+    .frame-options input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(184, 99, 51, 0.18);
+    }
+
+    .control-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(12px, 2vw, 20px);
+      gap: clamp(10px, 2vh, 16px);
+      justify-content: center;
+      width: min(100%, var(--control-width));
+      margin: 0 auto;
+    }
+
+    .live-box {
+      position: relative;
+      border-radius: 0;
+      overflow: hidden;
+      background: #080a1a;
+      width: min(var(--live-width), 100%);
+      margin: 0 auto;
+      box-shadow: 0 12px 28px rgba(13, 9, 4, 0.45);
+    }
+
+    .live-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      border-radius: 0;
+    }
+
+    .countdown-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 700;
+      color: #fff7e6;
+      text-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+    }
+
+    .countdown-overlay.visible {
+      opacity: 1;
+    }
+
+    .overlay-cap {
+      position: absolute;
+      top: clamp(8px, 1.4vh, 14px);
+      right: clamp(8px, 1.4vh, 14px);
+      padding: clamp(4px, 0.9vh, 7px) clamp(8px, 1.2vw, 12px);
+      border-radius: 999px;
+      background: rgba(82, 54, 31, 0.58);
+      color: #fef3df;
+      font-size: clamp(0.72rem, 1.4vw, 0.82rem);
+      letter-spacing: 0.06em;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      font-size: clamp(0.78rem, 1.5vw, 0.88rem);
+      color: var(--muted);
+    }
+
+    .status-bar span {
+      font-weight: 500;
+      color: var(--accent-dark);
+    }
+
+    #statusText,
+    #filterTag {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: clamp(0.72rem, 1.3vw, 0.82rem);
+    }
+
+    #statusText {
+      color: var(--accent-dark);
+    }
+
+    #filterTag {
+      color: rgba(108, 76, 49, 0.8);
+    }
+
+    .slot-grid {
+      display: none;
+    }
+
+    .slot {
+      position: relative;
+      border-radius: 0;
+      background: rgba(250, 240, 226, 0.92);
+      border: 2px solid transparent;
+      padding: clamp(4px, 0.8vh, 6px);
+      cursor: pointer;
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+      box-shadow: 0 12px 20px rgba(44, 48, 94, 0.12);
+    }
+
+    .slot canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 0;
+    }
+
+    .slot::after {
+      content: attr(data-label);
+      position: absolute;
+      top: clamp(5px, 0.9vh, 8px);
+      left: clamp(5px, 0.9vh, 8px);
+      font-size: clamp(0.64rem, 1.2vw, 0.74rem);
+      color: rgba(106, 76, 49, 0.6);
+      font-weight: 600;
+    }
+
+    .slot.active {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 22px rgba(184, 99, 51, 0.22);
+    }
+
+    .slot.filled::after {
+      color: var(--accent-dark);
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(8px, 1.6vw, 14px);
+    }
+
+    .control-row select {
+      padding: clamp(6px, 1.2vh, 9px) clamp(8px, 1.5vw, 12px);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(145, 103, 64, 0.32);
+      background: rgba(248, 236, 217, 0.9);
+      font-size: clamp(0.84rem, 1.6vw, 0.95rem);
+      color: var(--accent-dark);
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .control-row select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(184, 99, 51, 0.18);
+    }
+
+    .capture-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(8px, 1.6vw, 12px);
+      width: 100%;
+      margin: 0 auto;
+      flex-wrap: wrap;
+    }
+
+    .capture-progress {
+      font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: #fdf4e3;
+      background: rgba(40, 26, 15, 0.85);
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+    }
+
+    .ghost-btn {
+      width: clamp(36px, 5vw, 46px);
+      height: clamp(36px, 5vw, 46px);
+      border-radius: 50%;
+      background: #0c0c0c;
+      color: #fff;
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    button:not(:disabled).ghost-btn:hover {
+      transform: translateY(-2px);
+      background: #1f1f1f;
+    }
+
+    .ghost-btn.active {
+      background: #2f2f2f;
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+    }
+
+    .capture-btn {
+      width: clamp(48px, 6vw, 64px);
+      height: clamp(48px, 6vw, 64px);
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(180deg, #0c0c0c 0%, #000 100%);
+      box-shadow:
+        inset 0 4px 6px rgba(255, 255, 255, 0.1),
+        0 12px 18px rgba(0, 0, 0, 0.35);
+      position: relative;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+    }
+
+    .capture-btn::after {
+      content: "";
+      position: absolute;
+      inset: clamp(12px, 1.8vw, 18px);
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.15);
+    }
+
+    .capture-btn:active {
+      transform: translateY(2px) scale(0.97);
+      box-shadow:
+        inset 0 4px 8px rgba(0, 0, 0, 0.3),
+        inset 0 -4px 10px rgba(64, 28, 10, 0.4),
+        0 12px 22px rgba(101, 52, 28, 0.25);
+    }
+
+    .capture-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        max-height: none;
+        width: min(100%, 440px);
+      }
+
+      .preview-stack {
+        flex-direction: row;
+        align-items: stretch;
+        gap: clamp(12px, 4vw, 20px);
+      }
+
+      #finalCanvas,
+      .frame-overlay {
+        width: clamp(140px, 36vw, 186px);
+      }
+
+      .control-row {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        width: min(100%, clamp(240px, 72vw, 320px));
+        gap: clamp(12px, 4vw, 20px);
+      }
+
+      .panel-intro {
+        align-items: flex-start;
+        text-align: left;
+      }
+      .panel-intro p {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: clamp(16px, 5vh, 32px) clamp(12px, 6vw, 24px);
+      }
+
+      .layout {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: none;
+      }
+
+      .preview-stack {
+        flex-direction: column;
+      }
+
+      .preview-layout {
+        flex-direction: column;
+      }
+
+      .edit-controls {
+        max-width: none;
+      }
+
+      #finalCanvas,
+      .frame-overlay {
+        width: clamp(160px, 48vw, 220px);
+      }
+
+      .frame-options {
+        width: 100%;
+      }
+
+      .live-box {
+        width: 100%;
+      }
+
+      .actions {
+        width: 100%;
+      }
+
+      .panel-intro {
+        align-items: center;
+        text-align: center;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="bg-stage" aria-hidden="true">
+    <svg class="bg-orb bg-orb--one" viewBox="0 0 400 400">
+      <defs>
+        <radialGradient id="orbGradientA" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#f9d6a7" stop-opacity="0.92" />
+          <stop offset="45%" stop-color="#d49b5d" stop-opacity="0.65" />
+          <stop offset="100%" stop-color="#a96a3d" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="200" cy="200" r="190" fill="url(#orbGradientA)" />
+    </svg>
+
+    <svg class="bg-orb bg-orb--two" viewBox="0 0 400 400">
+      <defs>
+        <radialGradient id="orbGradientB" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#f7e9c9" stop-opacity="0.9" />
+          <stop offset="55%" stop-color="#d1b27e" stop-opacity="0.55" />
+          <stop offset="100%" stop-color="#a48052" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="200" cy="200" r="185" fill="url(#orbGradientB)" />
+    </svg>
+
+    <svg class="bg-orb bg-orb--three" viewBox="0 0 400 400">
+      <defs>
+        <radialGradient id="orbGradientC" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#e9b1a3" stop-opacity="0.82" />
+          <stop offset="50%" stop-color="#c88672" stop-opacity="0.55" />
+          <stop offset="100%" stop-color="#9c6250" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="200" cy="200" r="175" fill="url(#orbGradientC)" />
+    </svg>
+  </div>
+
+  <div class="layout">
+    <section class="stack preview-stack">
+      <header class="panel-intro">
+        <span class="badge tag">LITE MODE</span>
+        <h1>인생니컷</h1>
+        <p>허이진</p>
+      </header>
+      <div class="preview-layout">
+        <div class="preview-frame">
+          <canvas id="finalCanvas" width="720" height="1920" aria-label="인생네컷 미리보기"></canvas>
+          <img id="frameOverlayImg" class="frame-overlay" alt="" aria-hidden="true" hidden>
+        </div>
+        <aside class="edit-controls" aria-label="프레임 및 저장 설정">
+          <div class="frame-options">
+            <label for="frameSelect">프레임 선택</label>
+            <select id="frameSelect"></select>
+          </div>
+          <div class="result-actions">
+            <button id="homeBtn" type="button" class="ghost-btn" aria-label="처음으로">⌂</button>
+            <button id="downloadBtn" type="button" class="ghost-btn" aria-label="저장" disabled>⬇</button>
+          </div>
+        </aside>
+        <div class="session-mobile-panel" id="sessionMobilePanel" aria-label="저장된 결과 보기" hidden>
+          <figure>
+            <img id="sessionImage" alt="인생네컷 이미지" hidden>
+            <button type="button" id="sessionImageDownload" class="ghost-btn" hidden>PNG 저장</button>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="stack control-stack">
+      <div class="live-box">
+        <video id="video" autoplay playsinline muted></video>
+        <div id="countdownOverlay" class="countdown-overlay" aria-live="assertive" hidden></div>
+        <div class="overlay-cap">LIVE</div>
+      </div>
+      <div class="status-bar">
+        <span id="statusText">1 · 4</span>
+        <span id="filterTag">None</span>
+      </div>
+      <div class="slot-grid">
+        <div class="slot active" data-slot="0" data-label="1">
+          <canvas width="88" height="128" aria-label="1번째 컷"></canvas>
+        </div>
+        <div class="slot" data-slot="1" data-label="2">
+          <canvas width="88" height="128" aria-label="2번째 컷"></canvas>
+        </div>
+        <div class="slot" data-slot="2" data-label="3">
+          <canvas width="88" height="128" aria-label="3번째 컷"></canvas>
+        </div>
+        <div class="slot" data-slot="3" data-label="4">
+          <canvas width="88" height="128" aria-label="4번째 컷"></canvas>
+        </div>
+      </div>
+      <div class="control-row">
+        <select id="filterSelect">
+          <option value="none">None</option>
+          <option value="grayscale(0.85)">Mono</option>
+          <option value="sepia(0.75)">Warm</option>
+          <option value="contrast(1.2) brightness(1.05)">Crisp</option>
+          <option value="saturate(1.5)">Pop</option>
+        </select>
+        <select id="slotSelect" hidden></select>
+      </div>
+      <div class="capture-actions">
+          <button id="captureBtn" type="button" class="capture-btn" aria-label="촬영"></button>
+          <span class="capture-progress" id="captureProgress">1/4</span>
+        </div>
+      </section>
+  </div>
+
+  <div class="share-modal" id="shareModal" aria-hidden="true">
+    <div class="share-card">
+      <button type="button" class="share-close" id="shareCloseBtn" aria-label="닫기">✕</button>
+      <h2>세션이 저장되었어요</h2>
+      <div class="qr-box">
+        <div id="qrContainer" class="qr-container" role="img" aria-label="세션 QR 코드"></div>
+        <p class="share-hint">QR을 스캔하면 같은 기기에서 바로 열 수 있어요. (인터넷 연결 필요)</p>
+      </div>
+      <div class="share-link">
+        <input id="shareLinkInput" type="text" readonly aria-label="세션 링크">
+        <button type="button" id="copyLinkBtn">복사</button>
+      </div>
+      <div class="share-downloads">
+        <button type="button" id="shareImageBtn">PNG 다시 저장</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script src="frames/frame-data.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    const QR_SERVICE_URL = "https://api.qrserver.com/v1/create-qr-code/";
+    const video = document.getElementById("video");
+    const filterSelect = document.getElementById("filterSelect");
+    const frameSelect = document.getElementById("frameSelect");
+    const captureBtn = document.getElementById("captureBtn");
+    const homeBtn = document.getElementById("homeBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const statusText = document.getElementById("statusText");
+    const filterTag = document.getElementById("filterTag");
+    const countdownOverlay = document.getElementById("countdownOverlay");
+
+    const finalCanvas = document.getElementById("finalCanvas");
+    const finalCtx = finalCanvas.getContext("2d");
+    const frameOverlayImg = document.getElementById("frameOverlayImg");
+
+    const slotElements = Array.from(document.querySelectorAll(".slot"));
+    const slotCanvases = slotElements.map(slot => slot.querySelector("canvas"));
+    const shareModal = document.getElementById("shareModal");
+    const shareCloseBtn = document.getElementById("shareCloseBtn");
+    const qrContainer = document.getElementById("qrContainer");
+    const shareLinkInput = document.getElementById("shareLinkInput");
+    const copyLinkBtn = document.getElementById("copyLinkBtn");
+    const shareImageBtn = document.getElementById("shareImageBtn");
+    const liveBox = document.querySelector(".live-box");
+    const captureProgressEl = document.getElementById("captureProgress");
+    const sessionMobilePanel = document.getElementById("sessionMobilePanel");
+    const sessionImage = document.getElementById("sessionImage");
+    const sessionImageDownloadBtn = document.getElementById("sessionImageDownload");
+
+    const totalSlots = 4;
+    const capturedCanvases = new Array(totalSlots).fill(null);
+    let activeSlot = 0;
+    const CAPTURE_DELAY_SECONDS = 5;
+    const CAPTURE_PAUSE_AFTER_SHOT_MS = 1500;
+    let captureDelayTimeout = null;
+    let captureCountdownInterval = null;
+    let captureSequenceActive = false;
+    let postCapturePauseTimeout = null;
+
+    const tempCanvas = document.createElement("canvas");
+    const tempCtx = tempCanvas.getContext("2d");
+    const exportCanvas = document.createElement("canvas");
+    const exportCtx = exportCanvas.getContext("2d");
+
+    const EMBEDDED_FRAMES = (typeof EMBEDDED_FRAME_DATA === "object" && EMBEDDED_FRAME_DATA) || {};
+    const FRAME_NAMES = Object.keys(EMBEDDED_FRAMES);
+    const frameDataUrls = FRAME_NAMES.reduce((acc, key) => {
+      acc[key] = `data:image/png;base64,${EMBEDDED_FRAMES[key]}`;
+      return acc;
+    }, {});
+
+
+    let firebaseApp = null;
+    let firestore = null;
+    let firebaseAuth = null;
+    let firebaseReady = false;
+    let lastRemoteImageDataUrl = null;
+    let currentFilterCss = "none";
+    let lastExportImageBlob = null;
+    let firebaseInitErrorShown = false;
+
+    async function initFirebase() {
+      if (!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey)) {
+        console.warn("Firebase 설정이 비어 있어 공유 기능이 제한됩니다. firebase-config.js를 확인하세요.");
+        return;
+      }
+      try {
+        firebaseApp = firebase.initializeApp(window.FIREBASE_CONFIG);
+        firestore = firebase.firestore();
+        firebaseReady = true;
+      } catch (err) {
+        firebaseInitErrorShown = true;
+        console.error("Firebase 초기화 실패:", err);
+        return;
+      }
+
+      if (typeof firebase.auth !== "function") {
+        console.warn("Firebase Auth SDK가 로드되지 않아 익명 로그인을 건너뜁니다.");
+        return;
+      }
+
+      firebaseAuth = firebase.auth();
+      try {
+        await firebaseAuth.signInAnonymously();
+      } catch (err) {
+        console.warn("Firebase 익명 로그인 실패 - Firebase Console의 Authentication 설정을 확인하세요.", err);
+        if (err?.code === "auth/configuration-not-found") {
+          console.warn("Anonymous sign-in이 비활성화되어 있어 인증 없이 진행합니다.");
+        }
+      }
+    }
+
+    initFirebase();
+
+    const baseFrameStyle = {
+      background: "#f4f6ff",
+      inner: "#ffffff",
+      slotBackground: "#f0f2ff",
+      slotBorder: "rgba(80, 88, 166, 0.22)",
+      title: "#1f2560",
+      subtitle: "#8b90ba"
+    };
+
+    const frameImageCache = {};
+    const isFileProtocol = window.location.protocol === "file:";
+    let currentOverlaySrc = null;
+    let lastOverlayImage = null;
+    let lastOverlayReady = false;
+
+    function formatFrameLabel(name) {
+      return name.replace(/[-_]+/g, " ").replace(/\b\w/g, ch => ch.toUpperCase());
+    }
+
+    function updateFrameOverlayVisual(src) {
+      if (!frameOverlayImg) return;
+      if (src) {
+        frameOverlayImg.src = src;
+        frameOverlayImg.hidden = false;
+        frameOverlayImg.setAttribute("aria-hidden", "false");
+      } else {
+        frameOverlayImg.hidden = true;
+        frameOverlayImg.setAttribute("aria-hidden", "true");
+        frameOverlayImg.removeAttribute("src");
+      }
+    }
+
+    function applyFrameSelection(frameKey, options = {}) {
+      const nextSrc = frameKey ? frameDataUrls[frameKey] || null : null;
+      currentOverlaySrc = nextSrc;
+      updateFrameOverlayVisual(currentOverlaySrc);
+      if (!options.skipRender) {
+        renderFinalFrame();
+      }
+    }
+
+    function populateFrameSelect() {
+      const options = [{ value: "", label: "None" }];
+
+      FRAME_NAMES.forEach(name => {
+        options.push({
+          value: name,
+          label: formatFrameLabel(name)
+        });
+      });
+
+      frameSelect.innerHTML = "";
+      options.forEach(({ value, label }) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        frameSelect.appendChild(option);
+      });
+
+      if (options.length > 1) {
+        frameSelect.value = FRAME_NAMES[0];
+      } else {
+        frameSelect.value = "";
+      }
+
+      applyFrameSelection(frameSelect.value || "", { skipRender: true });
+      frameSelect.disabled = options.length <= 1;
+    }
+
+    populateFrameSelect();
+
+    async function uploadBlobToStorage(path, blob, contentType) {
+      if (!storage) throw new Error("Firebase Storage 미설정");
+      const storageRef = storage.ref().child(path);
+      await storageRef.put(blob, { contentType });
+      return storageRef.getDownloadURL();
+    }
+
+    function buildShareUrl(sessionId) {
+      const metaOverride = document.querySelector('meta[name="share-base"]')?.getAttribute("content");
+      const manualOverride = window.MY_SKETCHBOOTH_SHARE_BASE_URL || window.SHARE_BASE_URL || "";
+      const base = metaOverride || manualOverride || window.location.origin;
+      const url = new URL("session-view.html", base);
+      url.searchParams.set("session", sessionId);
+      url.hash = "";
+      return url.toString();
+    }
+
+    function createPreviewDataUrl(sourceCanvas) {
+      const PREVIEW_WIDTH = 540;
+      const scale = PREVIEW_WIDTH / sourceCanvas.width;
+      const previewCanvas = document.createElement("canvas");
+      previewCanvas.width = PREVIEW_WIDTH;
+      previewCanvas.height = Math.round(sourceCanvas.height * scale);
+      const ctx = previewCanvas.getContext("2d");
+      ctx.drawImage(sourceCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+      return previewCanvas.toDataURL("image/jpeg", 0.78);
+    }
+
+    async function uploadSessionAssets(previewDataUrl) {
+      if (!firebaseReady) return null;
+      const sessionId = generateSessionId();
+      await firestore.collection("sessions").doc(sessionId).set({
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        frameKey: frameSelect.value || "",
+        filter: filterSelect.value || "none",
+        imageDataUrl: previewDataUrl
+      });
+      return {
+        id: sessionId,
+        shareUrl: buildShareUrl(sessionId),
+        imageDataUrl: previewDataUrl
+      };
+    }
+
+    async function fetchSessionData(sessionId) {
+      if (!firebaseReady) {
+        throw new Error("Firebase가 설정되지 않았습니다.");
+      }
+      const snap = await firestore.collection("sessions").doc(sessionId).get();
+      if (!snap.exists) return null;
+      return { id: sessionId, ...snap.data() };
+    }
+
+    function generateSessionId() {
+      if (window.crypto?.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function renderQRCode(text) {
+      if (!qrContainer) return;
+      qrContainer.innerHTML = "";
+      if (!text) {
+        const message = document.createElement("span");
+        message.textContent = firebaseReady ? "공유 링크가 없습니다." : "Firebase 미설정";
+        message.style.fontSize = "0.85rem";
+        message.style.color = "#7a5b3c";
+        qrContainer.appendChild(message);
+        return;
+      }
+      const img = document.createElement("img");
+      img.width = 180;
+      img.height = 180;
+      img.alt = "세션 QR 코드";
+      const encoded = encodeURIComponent(text);
+      img.src = `${QR_SERVICE_URL}?size=180x180&data=${encoded}`;
+      img.onerror = () => {
+        qrContainer.textContent = "QR 생성 실패 (인터넷 연결 필요)";
+      };
+      qrContainer.appendChild(img);
+    }
+
+    function showShareModal(options = {}) {
+      if (!shareModal) return;
+      const link = options.shareUrl || "";
+      shareLinkInput.value = link;
+      renderQRCode(link);
+        lastRemoteImageDataUrl = options.remoteImageDataUrl ?? lastRemoteImageDataUrl;
+        shareImageBtn.disabled = !(lastExportImageBlob || lastRemoteImageDataUrl);
+        shareModal.classList.add("active");
+        shareModal.setAttribute("aria-hidden", "false");
+    }
+
+    function renderSessionPanel(record) {
+      if (!sessionMobilePanel) return;
+      sessionMobilePanel.hidden = false;
+      if (record.imageDataUrl) {
+        sessionImage.src = record.imageDataUrl;
+        sessionImage.hidden = false;
+        sessionImageDownloadBtn.hidden = false;
+        sessionImageDownloadBtn.onclick = () => downloadDataUrl(record.imageDataUrl, "mysketchbooth-life4cut.jpg");
+      } else {
+        sessionImage.hidden = true;
+        sessionImageDownloadBtn.hidden = true;
+        sessionImageDownloadBtn.onclick = null;
+      }
+    }
+
+    function hideShareModal() {
+      if (!shareModal) return;
+      shareModal.classList.remove("active");
+      shareModal.setAttribute("aria-hidden", "true");
+    }
+
+    function downloadBlob(blob, filename) {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadDataUrl(dataUrl, filename) {
+      if (!dataUrl) return;
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+
+    async function dataUrlToBlob(dataUrl) {
+      const response = await fetch(dataUrl);
+      return await response.blob();
+    }
+
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function fetchBlobFromUrl(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("FAILED_REMOTE_FETCH");
+      }
+      return await response.blob();
+    }
+
+    function drawBlobOnCanvas(blob) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
+          finalCtx.drawImage(img, 0, 0, finalCanvas.width, finalCanvas.height);
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        img.onerror = err => {
+          URL.revokeObjectURL(url);
+          reject(err);
+        };
+        img.src = url;
+      });
+    }
+
+    async function loadSessionById(sessionId) {
+      if (!firebaseReady) {
+        alert("Firebase 설정이 없어서 공유 세션을 열 수 없습니다.");
+        return;
+      }
+      try {
+        const record = await fetchSessionData(sessionId);
+        if (!record || !record.imageDataUrl) {
+          alert("저장된 세션을 찾을 수 없습니다.");
+          return;
+        }
+        const imageBlob = await dataUrlToBlob(record.imageDataUrl);
+        await drawBlobOnCanvas(imageBlob);
+        lastExportImageBlob = imageBlob;
+        lastRemoteImageDataUrl = record.imageDataUrl;
+        if (sessionMobilePanel) {
+          renderSessionPanel(record);
+        }
+        document.body.classList.add("stage-review");
+        captureBtn.disabled = true;
+        updateStatus();
+        showShareModal({
+          shareUrl: buildShareUrl(sessionId),
+          remoteImageDataUrl: record.imageDataUrl
+        });
+      } catch (err) {
+        console.error("세션 불러오기 실패", err);
+        alert("세션을 여는 중 문제가 발생했습니다.");
+      }
+    }
+
+    const layout = {
+      framePadding: 40,
+      topArea: 100,
+      bottomArea: 140,
+      slotGap: 22,
+      innerMarginX: 36,
+      slotRadius: 0
+    };
+
+    const slotRects = [];
+    const dateLabel = new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(new Date());
+
+    function init() {
+      video.style.filter = filterSelect.value;
+      currentFilterCss = filterSelect.value || "none";
+      recomputeSlotRects();
+      renderFinalFrame();
+      updateSlotThumbs();
+      updateStatus();
+      updateFilterTag();
+      captureBtn.disabled = false;
+    }
+
+    function applySlotGridAspect() {
+      const baseRect = slotRects[0];
+      if (!baseRect) return;
+      const ratio = baseRect.width / baseRect.height || 1;
+      slotElements.forEach((slot, idx) => {
+        const width = slot.clientWidth;
+        slot.style.height = `${width / ratio}px`;
+        const canvas = slotCanvases[idx];
+        const slotRect = slotRects[idx];
+        if (canvas && slotRect) {
+          canvas.width = slotRect.width;
+          canvas.height = slotRect.height;
+        }
+      });
+    }
+
+    function recomputeSlotRects() {
+      slotRects.length = 0;
+      const width = finalCanvas.width;
+      const height = finalCanvas.height;
+      const contentTop = layout.framePadding + layout.topArea;
+      const contentBottom = height - layout.framePadding - layout.bottomArea;
+      const availableHeight = contentBottom - contentTop;
+      const slotHeight = (availableHeight - layout.slotGap * (totalSlots - 1)) / totalSlots;
+      for (let i = 0; i < totalSlots; i++) {
+        const x = layout.framePadding + layout.innerMarginX;
+        const widthInner = width - (layout.framePadding + layout.innerMarginX) * 2;
+        const y = contentTop + i * (slotHeight + layout.slotGap);
+        slotRects.push({ x, y, width: widthInner, height: slotHeight });
+      }
+      if (liveBox && slotRects[0]) {
+        const slotRect = slotRects[0];
+        liveBox.style.aspectRatio = `${slotRect.width} / ${slotRect.height}`;
+        document.documentElement.style.setProperty("--preview-width", `${slotRect.width}px`);
+        const controlWidth = Math.round(slotRect.width * 1.05);
+        document.documentElement.style.setProperty("--control-width", `${controlWidth}px`);
+      }
+      applySlotGridAspect();
+    }
+
+    function roundedRectPath(ctx, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + width - r, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+      ctx.lineTo(x + width, y + height - r);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+      ctx.lineTo(x + r, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle, strokeStyle, lineWidth = 1) {
+      roundedRectPath(ctx, x, y, width, height, radius);
+      if (fillStyle) {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+      }
+      if (strokeStyle) {
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+      }
+    }
+
+    function drawRoundedImage(ctx, source, x, y, width, height, radius) {
+      ctx.save();
+      roundedRectPath(ctx, x, y, width, height, radius);
+      ctx.clip();
+
+      const sourceAspect = source.width / source.height;
+      const targetAspect = width / height;
+      let sx = 0;
+      let sy = 0;
+      let sWidth = source.width;
+      let sHeight = source.height;
+
+      if (sourceAspect > targetAspect) {
+        sHeight = source.height;
+        sWidth = sHeight * targetAspect;
+        sx = (source.width - sWidth) / 2;
+      } else {
+        sWidth = source.width;
+        sHeight = sWidth / targetAspect;
+        sy = (source.height - sHeight) / 2;
+      }
+
+      ctx.drawImage(source, sx, sy, sWidth, sHeight, x, y, width, height);
+      ctx.restore();
+    }
+
+    function renderFrameBase(style, overlaySrc) {
+      const width = finalCanvas.width;
+      const height = finalCanvas.height;
+
+      finalCtx.clearRect(0, 0, width, height);
+
+      lastOverlayImage = null;
+      lastOverlayReady = false;
+      let overlayImage = null;
+      let overlayReady = false;
+
+      if (overlaySrc) {
+        overlayImage = frameImageCache[overlaySrc] || new Image();
+
+        if (!frameImageCache[overlaySrc]) {
+          overlayImage.crossOrigin = "anonymous";
+          overlayImage.src = overlaySrc;
+          frameImageCache[overlaySrc] = overlayImage;
+          overlayImage.onload = () => renderFinalFrame();
+          overlayImage.onerror = () => {
+            console.warn("프레임 이미지를 불러오지 못했습니다:", overlaySrc);
+          };
+        }
+
+        overlayReady = overlayImage.complete && overlayImage.naturalWidth;
+      }
+
+      finalCtx.fillStyle = style.background;
+      finalCtx.fillRect(0, 0, width, height);
+
+      if (!overlayReady) {
+        drawRoundedRect(
+          finalCtx,
+          layout.framePadding,
+          layout.framePadding,
+          width - layout.framePadding * 2,
+          height - layout.framePadding * 2,
+          44,
+          style.inner
+        );
+      }
+
+      finalCtx.fillStyle = style.title;
+      finalCtx.textAlign = "center";
+      finalCtx.textBaseline = "top";
+      finalCtx.font = "700 38px 'Pretendard', 'Noto Sans KR', sans-serif";
+      finalCtx.fillText("문구는 니가 알아서 해라", width / 2, layout.framePadding + 12);
+
+      finalCtx.fillStyle = style.subtitle;
+      finalCtx.font = "500 18px 'Pretendard', sans-serif";
+      finalCtx.fillText(dateLabel, width / 2, layout.framePadding + 52);
+
+      if (!overlayReady) {
+        slotRects.forEach(rect => {
+          drawRoundedRect(finalCtx, rect.x, rect.y, rect.width, rect.height, layout.slotRadius, style.slotBackground, style.slotBorder, 2);
+        });
+      }
+
+      lastOverlayImage = overlayImage;
+      lastOverlayReady = overlayReady;
+    }
+
+    function drawCapturedImages(style) {
+      capturedCanvases.forEach((snapshot, index) => {
+        if (!snapshot) return;
+        const rect = slotRects[index];
+        drawRoundedImage(finalCtx, snapshot, rect.x, rect.y, rect.width, rect.height, layout.slotRadius - 4);
+        drawRoundedRect(finalCtx, rect.x, rect.y, rect.width, rect.height, layout.slotRadius, null, style.slotBorder, 2);
+      });
+    }
+
+    function renderFinalFrame() {
+      const style = baseFrameStyle;
+      renderFrameBase(style, currentOverlaySrc);
+      drawCapturedImages(style);
+      if (lastOverlayReady && lastOverlayImage) {
+        finalCtx.drawImage(lastOverlayImage, 0, 0, finalCanvas.width, finalCanvas.height);
+      }
+      updateDownloadState();
+    }
+
+    function updateSlotThumbs() {
+      slotCanvases.forEach((canvas, index) => {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const snapshot = capturedCanvases[index];
+
+        if (!snapshot) {
+        ctx.fillStyle = "#f7eedc";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#b08a63";
+          ctx.font = "600 24px 'Pretendard', sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(index + 1, canvas.width / 2, canvas.height / 2);
+          slotElements[index].classList.remove("filled");
+          return;
+        }
+
+        drawRoundedImage(ctx, snapshot, 0, 0, canvas.width, canvas.height, 12);
+        slotElements[index].classList.add("filled");
+      });
+    }
+
+    function setActiveSlot(index) {
+      activeSlot = index;
+      slotElements.forEach((slot, idx) => {
+        slot.classList.toggle("active", idx === index);
+      });
+      updateStatus();
+    }
+
+    function updateCaptureProgress(filled = null) {
+      if (!captureProgressEl) return;
+      const filledCount = typeof filled === "number" ? filled : capturedCanvases.filter(Boolean).length;
+      const nextIndex = filledCount >= totalSlots ? totalSlots : filledCount + 1;
+      captureProgressEl.textContent = `${nextIndex}/${totalSlots}`;
+    }
+
+    function updateStatus() {
+      const filled = capturedCanvases.filter(Boolean).length;
+      updateCaptureProgress(filled);
+      const displayIndex = activeSlot + 1;
+      if (filled === totalSlots) {
+        statusText.textContent = "DONE";
+      } else {
+        statusText.textContent = `${displayIndex} · 4`;
+      }
+    }
+
+    function updateFilterTag() {
+      const label = filterSelect.selectedOptions[0]?.text || "Filter";
+      filterTag.textContent = label;
+    }
+
+    function updateDownloadState() {
+      const ready = capturedCanvases.every(Boolean);
+      downloadBtn.disabled = !ready;
+    }
+
+    function showCountdownDisplay(value) {
+      if (!countdownOverlay) return;
+      countdownOverlay.textContent = value;
+      countdownOverlay.classList.add("visible");
+      countdownOverlay.removeAttribute("hidden");
+    }
+
+    function hideCountdownDisplay() {
+      if (!countdownOverlay) return;
+      countdownOverlay.textContent = "";
+      countdownOverlay.classList.remove("visible");
+      countdownOverlay.setAttribute("hidden", "true");
+    }
+
+    function pauseLivePreview() {
+      if (!video) return;
+      if (!video.paused) {
+        video.pause();
+      }
+    }
+
+    function resumeLivePreview() {
+      if (!video) return;
+      if (video.paused) {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      }
+    }
+
+    function startCaptureCountdown() {
+      if (!captureSequenceActive) return;
+      clearCaptureCountdown({ keepButtonState: true });
+      resumeLivePreview();
+
+      let remaining = CAPTURE_DELAY_SECONDS;
+      statusText.textContent = `촬영 ${remaining}`;
+      showCountdownDisplay(remaining);
+
+      captureCountdownInterval = setInterval(() => {
+        remaining -= 1;
+        if (remaining > 0) {
+          statusText.textContent = `촬영 ${remaining}`;
+          showCountdownDisplay(remaining);
+        } else {
+          clearInterval(captureCountdownInterval);
+          captureCountdownInterval = null;
+        }
+      }, 1000);
+
+      captureDelayTimeout = setTimeout(() => {
+        clearCaptureCountdown({ keepButtonState: true });
+        performCapture();
+      }, CAPTURE_DELAY_SECONDS * 1000);
+    }
+
+    function enterReviewStage() {
+      document.body.classList.add("stage-review");
+      captureBtn.disabled = true;
+      updateStatus();
+    }
+
+    function exitReviewStage() {
+      document.body.classList.remove("stage-review");
+    }
+
+    function clearPendingCapturePause() {
+      if (postCapturePauseTimeout) {
+        clearTimeout(postCapturePauseTimeout);
+        postCapturePauseTimeout = null;
+      }
+    }
+
+    function clearCaptureCountdown({ resetStatus = false, keepButtonState = false } = {}) {
+      if (captureDelayTimeout) {
+        clearTimeout(captureDelayTimeout);
+        captureDelayTimeout = null;
+      }
+      if (captureCountdownInterval) {
+        clearInterval(captureCountdownInterval);
+        captureCountdownInterval = null;
+      }
+      if (resetStatus) {
+        updateStatus();
+      }
+      hideCountdownDisplay();
+      if (!keepButtonState) {
+        captureBtn.disabled = capturedCanvases.every(Boolean);
+      }
+    }
+
+    function performCapture() {
+      if (!video.videoWidth || !video.videoHeight) {
+        clearCaptureCountdown({ resetStatus: true });
+        return;
+      }
+
+      tempCanvas.width = video.videoWidth;
+      tempCanvas.height = video.videoHeight;
+      tempCtx.save();
+      tempCtx.scale(-1, 1);
+      tempCtx.translate(-tempCanvas.width, 0);
+      tempCtx.filter = filterSelect.value;
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.restore();
+
+      const snapshot = document.createElement("canvas");
+      snapshot.width = tempCanvas.width;
+      snapshot.height = tempCanvas.height;
+      const snapshotCtx = snapshot.getContext("2d");
+      snapshotCtx.drawImage(tempCanvas, 0, 0);
+
+      capturedCanvases[activeSlot] = snapshot;
+      updateSlotThumbs();
+      renderFinalFrame();
+      pauseLivePreview();
+
+      const nextSlot = capturedCanvases.findIndex(c => !c);
+      if (nextSlot !== -1) {
+        setActiveSlot(nextSlot);
+        updateStatus();
+        clearPendingCapturePause();
+        if (captureSequenceActive) {
+          postCapturePauseTimeout = setTimeout(() => {
+            postCapturePauseTimeout = null;
+            if (!captureSequenceActive) return;
+            startCaptureCountdown();
+          }, CAPTURE_PAUSE_AFTER_SHOT_MS);
+        } else {
+          captureBtn.disabled = false;
+        }
+      } else {
+        captureSequenceActive = false;
+        clearPendingCapturePause();
+        enterReviewStage();
+      }
+      updateDownloadState();
+    }
+
+    async function initCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 640 },
+            height: { ideal: 960 }
+          }
+        });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("카메라 접근이 허용되지 않았습니다: " + err.message);
+      }
+    }
+
+    captureBtn.addEventListener("click", () => {
+      if (!video.videoWidth || !video.videoHeight) return;
+      if (captureSequenceActive) return;
+      captureSequenceActive = true;
+      captureBtn.disabled = true;
+      startCaptureCountdown();
+    });
+
+    async function exportCanvasToBlob(canvas) {
+      const QUALITY = 0.82;
+      if (!canvas.toBlob) {
+        const dataUrl = canvas.toDataURL("image/jpeg", QUALITY);
+        return dataUrlToBlob(dataUrl);
+      }
+      return new Promise(resolve => {
+        canvas.toBlob(
+          blob => resolve(blob),
+          "image/jpeg",
+          QUALITY
+        );
+      });
+    }
+
+    downloadBtn.addEventListener("click", async () => {
+      if (downloadBtn.disabled) return;
+
+      exportCanvas.width = finalCanvas.width;
+      exportCanvas.height = finalCanvas.height;
+      exportCtx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+      exportCtx.drawImage(finalCanvas, 0, 0);
+
+      let downloadHref = "";
+      let pngBlob = null;
+      let remoteRecord = null;
+
+      try {
+        pngBlob = await exportCanvasToBlob(exportCanvas);
+        if (pngBlob) {
+          downloadHref = URL.createObjectURL(pngBlob);
+        } else {
+          const fallbackUrl = exportCanvas.toDataURL("image/png");
+          downloadHref = fallbackUrl;
+          pngBlob = await dataUrlToBlob(fallbackUrl);
+        }
+
+        const link = document.createElement("a");
+        link.download = "mysketchbooth-life4cut.jpg";
+        link.href = downloadHref;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        if (pngBlob && downloadHref.startsWith("blob:")) {
+          URL.revokeObjectURL(downloadHref);
+        }
+
+        lastExportImageBlob = pngBlob;
+
+        const previewDataUrl = createPreviewDataUrl(exportCanvas);
+
+        if (firebaseReady) {
+          try {
+            remoteRecord = await uploadSessionAssets(previewDataUrl);
+          } catch (uploadErr) {
+            console.warn("Firebase 업로드 실패:", uploadErr);
+            if (!firebaseInitErrorShown) {
+              const extra = uploadErr?.code === "permission-denied"
+                ? "\n(Firebase Firestore 보안 규칙과 Authentication(익명 로그인) 설정을 확인해 주세요.)"
+                : "";
+              alert(`공유 링크를 만들지 못했습니다. 인터넷 연결과 Firebase 설정을 확인해 주세요.${extra}`);
+              firebaseInitErrorShown = true;
+            }
+          }
+        }
+
+        resetCaptureState(true);
+        showShareModal({
+          shareUrl: remoteRecord?.shareUrl || "",
+          remoteImageDataUrl: remoteRecord?.imageDataUrl || null
+        });
+      } catch (error) {
+        console.error("다운로드 실패", error);
+        const message = isFileProtocol
+          ? "현재 파일을 직접 열어 사용 중이라면 브라우저가 보안 때문에 저장을 막습니다.\nVS Code Live Server, npx serve 등으로 http://localhost 형태로 실행한 뒤 다시 시도해 주세요."
+          : "이미지를 저장하지 못했습니다. 브라우저 보안 설정이나 파일 접근 권한을 확인해 주세요.";
+        alert(message);
+        updateDownloadState();
+      }
+    });
+
+    filterSelect.addEventListener("change", () => {
+      video.style.filter = filterSelect.value;
+      currentFilterCss = filterSelect.value || "none";
+      updateFilterTag();
+    });
+
+    frameSelect.addEventListener("change", () => {
+      applyFrameSelection(frameSelect.value || "");
+    });
+    slotElements.forEach((slot, index) => {
+      slot.addEventListener("click", () => {
+        setActiveSlot(index);
+      });
+    });
+
+    homeBtn.addEventListener("click", () => {
+      resetCaptureState();
+    });
+
+    shareCloseBtn?.addEventListener("click", hideShareModal);
+    shareModal?.addEventListener("click", evt => {
+      if (evt.target === shareModal) {
+        hideShareModal();
+      }
+    });
+
+    copyLinkBtn?.addEventListener("click", async () => {
+      if (!navigator.clipboard) {
+        alert("클립보드 복사를 지원하지 않는 환경입니다.");
+        return;
+      }
+      if (!shareLinkInput.value) {
+        alert("공유 가능한 링크가 없습니다.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(shareLinkInput.value);
+        copyLinkBtn.textContent = "복사됨";
+        setTimeout(() => (copyLinkBtn.textContent = "복사"), 1500);
+      } catch (err) {
+        console.error("링크 복사 실패", err);
+        alert("복사에 실패했습니다.");
+      }
+    });
+
+    shareImageBtn?.addEventListener("click", async () => {
+      if (shareImageBtn.disabled) return;
+      try {
+        if (lastExportImageBlob) {
+          downloadBlob(lastExportImageBlob, "mysketchbooth-life4cut.jpg");
+          return;
+        }
+        if (lastRemoteImageDataUrl) {
+          const remoteBlob = await dataUrlToBlob(lastRemoteImageDataUrl);
+          downloadBlob(remoteBlob, "mysketchbooth-life4cut.jpg");
+          return;
+        }
+      } catch (err) {
+        console.error("원본 이미지를 불러오지 못했습니다.", err);
+      }
+      alert("다운로드할 이미지가 없습니다.");
+    });
+
+
+    function resetCaptureState(preserveShareAssets = false) {
+      captureSequenceActive = false;
+      clearPendingCapturePause();
+      resumeLivePreview();
+      for (let i = 0; i < capturedCanvases.length; i++) {
+        capturedCanvases[i] = null;
+      }
+      if (!preserveShareAssets) {
+        exitReviewStage();
+      }
+      clearCaptureCountdown({ resetStatus: true });
+      updateSlotThumbs();
+      setActiveSlot(0);
+      renderFinalFrame();
+      updateDownloadState();
+      captureBtn.disabled = false;
+      if (!preserveShareAssets) {
+        lastExportImageBlob = null;
+        lastRemoteImageDataUrl = null;
+        if (sessionMobilePanel) {
+          sessionMobilePanel.hidden = true;
+          sessionImage.hidden = true;
+          sessionImageDownloadBtn.hidden = true;
+        }
+      }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionIdFromQuery = urlParams.get("session");
+
+    init();
+    window.addEventListener("resize", () => {
+      recomputeSlotRects();
+      renderFinalFrame();
+    });
+
+    if (sessionIdFromQuery) {
+      document.body.classList.add("session-view");
+      loadSessionById(sessionIdFromQuery);
+    } else {
+      initCamera();
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

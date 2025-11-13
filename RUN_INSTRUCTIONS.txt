@@ -1,0 +1,35 @@
+﻿MySketchBooth Lite 실행 가이드 (Python + ngrok + Firebase Firestore)
+
+1. 준비물
+   - Python 3 (Windows: https://www.python.org/downloads/ , macOS: 기본 내장 또는 `brew install python`)
+   - Google Chrome (권장 브라우저)
+   - ngrok 계정 / CLI (https://ngrok.com)
+   - Firebase 프로젝트 (Cloud Firestore 활성화)
+
+2. Firebase 설정
+   a. Firebase 콘솔에서 웹 앱을 등록하고 발급 받은 설정 값을 `firebase-config.js`에 입력합니다.
+   b. Cloud Firestore를 “테스트 모드”로 시작해 `sessions` 컬렉션을 사용할 수 있도록 합니다.
+   c. Authentication → Sign-in method에서 “Anonymous”를 활성화하고 저장합니다.
+   d. 배포 전에는 Firestore 보안 규칙을 프로젝트 정책에 맞게 조정하세요.
+
+3. Python 서버 실행
+   a. 압축을 푼 프로젝트 폴더로 이동합니다.
+      - Windows: PowerShell에서 `cd "C:\Users\...\playground\photo"`
+      - macOS: 터미널에서 `cd /Users/.../playground/photo`
+   b. Python 내장 서버 실행
+      - Windows: `python -m http.server 5500`
+      - macOS: `python3 -m http.server 5500`
+   c. 터미널에 “Serving HTTP on ... port 5500” 문구가 보이면 준비 완료입니다 (이 창은 종료하지 마세요).
+
+4. ngrok로 HTTPS 터널 열기
+   a. 최초 1회 `ngrok config add-authtoken <본인토큰>` 으로 로그인합니다.
+   b. 같은 폴더에서 `ngrok http 5500` 실행 → `https://xxxxx.ngrok-free.app` 주소가 표시됩니다.
+
+5. 브라우저에서 사용
+   a. Chrome에서 **ngrok 주소**에 `/mysketchbooth-lite.html` 을 붙여 접속합니다.
+      예) `https://xxxxx.ngrok-free.app/mysketchbooth-lite.html`
+   b. 카메라 접근을 허용하고 촬영/저장을 진행합니다.
+   c. 저장이 완료되면 결과 이미지가 Firestore 문서에 저장되고, 생성된 QR/링크(`?session=...`)를 휴대폰 등 다른 기기에서 열 수 있습니다.
+
+※ `mysketchbooth-lite.html`을 더블클릭해 `file://`로 열면 저장/공유 기능이 차단됩니다. 반드시 Python 서버 + ngrok 조합으로 실행하세요.
+※ ngrok 터널과 Python 서버가 켜져 있는 동안에만 외부 기기에서 접근할 수 있습니다.
